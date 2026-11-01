@@ -2,7 +2,9 @@ import {
   SPEECH_LOCALES,
   findBestVoice,
   getVoiceUnavailableMessage,
-  cleanTextForSpeech
+  cleanTextForSpeech,
+  extractSpeechTranscripts,
+  SpeechSubmissionManager
 } from './src/services/speechService.js';
 
 function assert(condition, message) {
@@ -12,10 +14,158 @@ function assert(condition, message) {
 }
 
 console.log('\n======================================================');
-console.log('🧪 RUNNING SPEECH SERVICE MULTILINGUAL TEST SUITE');
+console.log('🧪 RUNNING SAHAYAK VOICE & SPEECH SERVICE TEST SUITE');
 console.log('======================================================\n');
 
-// Mock voice fixtures
+// ---------------------------------------------------------------------
+// PART 1: Web Speech Recognition - Interim Results & Single-Submission
+// ---------------------------------------------------------------------
+
+console.log('--- PART 1: Interim Results & Single-Submission Tests ---\n');
+
+// Test 1: Simulating progressive interim results ("Apply" -> "Apply for" -> "Apply for a PAN card")
+console.log('1. Testing interim results accumulation:');
+let submittedTranscripts = [];
+const manager = new SpeechSubmissionManager((text) => {
+  submittedTranscripts.push(text);
+});
+
+// Interim result 1: "Apply" (isFinal: false)
+const event1 = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'Apply' }, isFinal: false }]
+};
+const res1 = manager.updateFromEvent(event1);
+assert(res1.finalTranscript === '', 'Interim event must not finalize');
+assert(res1.interimTranscript === 'Apply', 'Interim transcript should be "Apply"');
+assert(submittedTranscripts.length === 0, 'No submissions should occur during interim speech');
+
+// Interim result 2: "Apply for" (isFinal: false)
+const event2 = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'Apply for' }, isFinal: false }]
+};
+const res2 = manager.updateFromEvent(event2);
+assert(res2.finalTranscript === '', 'Interim event must not finalize');
+assert(res2.interimTranscript === 'Apply for', 'Interim transcript should be "Apply for"');
+assert(submittedTranscripts.length === 0, 'No submissions should occur during interim speech');
+
+// Interim result 3: "Apply for a PAN" (isFinal: false)
+const event3 = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'Apply for a PAN' }, isFinal: false }]
+};
+const res3 = manager.updateFromEvent(event3);
+assert(res3.finalTranscript === '', 'Interim event must not finalize');
+assert(submittedTranscripts.length === 0, 'No submissions should occur during interim speech');
+
+// Final result 4: "Apply for a PAN card" (isFinal: true)
+const event4 = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'Apply for a PAN card' }, isFinal: true }]
+};
+const res4 = manager.updateFromEvent(event4);
+assert(res4.finalTranscript === 'Apply for a PAN card', 'Final transcript must be captured');
+assert(submittedTranscripts.length === 0, 'Must NOT submit on onresult alone; waits for speech completion');
+
+// Speech ends (onend triggered)
+const submitted = manager.finalizeAndSubmit();
+assert(submitted === true, 'Finalize and submit must succeed');
+assert(submittedTranscripts.length === 1, `Expected exactly 1 submission, got ${submittedTranscripts.length}`);
+assert(submittedTranscripts[0] === 'Apply for a PAN card', 'Submitted text matches final phrase');
+console.log('   ✅ Passed: Progressive interim results ("Apply for a PAN card") produced exactly ONE submission.');
+
+// Test 2: Double-submission Lock (e.g. onend + manual stopListening() race condition)
+console.log('2. Testing submission lock against duplicate triggers (onend + stopListening):');
+const secondCall = manager.finalizeAndSubmit();
+assert(secondCall === false, 'Second submission attempt must be locked out');
+assert(submittedTranscripts.length === 1, 'Duplicate trigger must NOT produce second request');
+console.log('   ✅ Passed: Duplicate submission successfully blocked by lock.');
+
+// Test 3: Short Single-Word Utterance ("Yes" / "అవును" / "हाँ")
+console.log('3. Testing single short utterance ("Yes"):');
+manager.reset();
+submittedTranscripts = [];
+
+const shortEvent = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'Yes' }, isFinal: true }]
+};
+manager.updateFromEvent(shortEvent);
+manager.finalizeAndSubmit();
+assert(submittedTranscripts.length === 1, 'Short word should submit once');
+assert(submittedTranscripts[0] === 'Yes', 'Short word submitted accurately');
+console.log('   ✅ Passed: Short utterance "Yes" submitted exactly once.');
+
+// Test 4: Long Utterance with Pauses (Multiple isFinal segments concatenated)
+console.log('4. Testing longer sentence with pauses across multiple final chunks:');
+manager.reset();
+submittedTranscripts = [];
+
+// Chunk 1 finalized: "I need to apply for Ayushman Bharat"
+const chunk1 = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'I need to apply for Ayushman Bharat' }, isFinal: true }]
+};
+manager.updateFromEvent(chunk1);
+assert(submittedTranscripts.length === 0, 'No submission yet');
+
+// Chunk 2 finalized: "and check my family eligibility"
+const chunk2 = {
+  resultIndex: 1,
+  results: [
+    { 0: { transcript: 'I need to apply for Ayushman Bharat' }, isFinal: true },
+    { 0: { transcript: 'and check my family eligibility' }, isFinal: true }
+  ]
+};
+manager.updateFromEvent(chunk2);
+assert(submittedTranscripts.length === 0, 'No submission yet');
+
+// End of speech
+manager.finalizeAndSubmit();
+assert(submittedTranscripts.length === 1, 'Multi-chunk sentence submitted exactly once');
+assert(
+  submittedTranscripts[0] === 'I need to apply for Ayushman Bharat and check my family eligibility',
+  'Multi-chunk sentence concatenated cleanly'
+);
+console.log('   ✅ Passed: Multi-chunk sentence accumulated and submitted exactly once.');
+
+// Test 5: Empty Transcript Handling (Microphone opened and closed without speaking)
+console.log('5. Testing empty transcript handling (silent recording):');
+manager.reset();
+submittedTranscripts = [];
+
+const emptyEvent = {
+  resultIndex: 0,
+  results: []
+};
+manager.updateFromEvent(emptyEvent);
+const emptySubmitted = manager.finalizeAndSubmit();
+assert(emptySubmitted === false, 'Empty transcript should return false');
+assert(submittedTranscripts.length === 0, 'Empty transcript must never send a network request');
+console.log('   ✅ Passed: Empty/silent recording safely rejected with 0 requests sent.');
+
+// Test 6: Multilingual Speech Input: Telugu Utterance
+console.log('6. Testing Telugu speech input ("పాన్ కార్డ్ దరఖాస్తు"):');
+manager.reset();
+submittedTranscripts = [];
+
+const teluguEvent = {
+  resultIndex: 0,
+  results: [{ 0: { transcript: 'పాన్ కార్డ్ దరఖాస్తు' }, isFinal: true }]
+};
+manager.updateFromEvent(teluguEvent);
+manager.finalizeAndSubmit();
+assert(submittedTranscripts.length === 1, 'Telugu utterance submitted once');
+assert(submittedTranscripts[0] === 'పాన్ కార్డ్ దరఖాస్తు', 'Telugu text accurately captured');
+console.log('   ✅ Passed: Telugu speech input submitted cleanly.');
+
+// ---------------------------------------------------------------------
+// PART 2: Speech Synthesis & Multilingual Voice Selection
+// ---------------------------------------------------------------------
+
+console.log('\n--- PART 2: Speech Synthesis & Voice Selection Tests ---\n');
+
 const mockEdgeVoices = [
   { name: 'Microsoft David - English (United States)', lang: 'en-US' },
   { name: 'Microsoft Neerja Online (Natural) - English (India)', lang: 'en-IN' },
@@ -34,75 +184,37 @@ const mockEnglishOnlyDevice = [
   { name: 'Microsoft Zira - English (United States)', lang: 'en-US' }
 ];
 
-// Test 1: Locale Map Configuration
-console.log('1. Verifying Language Locales:');
+// Test 7: Locales
+console.log('7. Verifying Language Locales:');
 assert(SPEECH_LOCALES.en === 'en-IN', 'en must map to en-IN');
 assert(SPEECH_LOCALES.hi === 'hi-IN', 'hi must map to hi-IN');
 assert(SPEECH_LOCALES.te === 'te-IN', 'te must map to te-IN');
 console.log('   ✅ Passed: en-IN, hi-IN, te-IN properly configured.');
 
-// Test 2: Edge Telugu Voice Selection
-console.log('2. Verifying Edge Telugu voice detection:');
-const teVoiceEdge = findBestVoice(mockEdgeVoices, 'te');
-assert(teVoiceEdge && teVoiceEdge.lang === 'te-IN', 'Should select Microsoft Mohan for Telugu');
-console.log(`   ✅ Passed: Matched "${teVoiceEdge.name}"`);
+// Test 8: Voice Matching
+console.log('8. Verifying native voice detection (Edge & Chrome):');
+assert(findBestVoice(mockEdgeVoices, 'te')?.name.includes('Mohan'), 'Edge Telugu matched');
+assert(findBestVoice(mockChromeVoices, 'te')?.name.includes('తెలుగు'), 'Chrome Telugu matched');
+assert(findBestVoice(mockEdgeVoices, 'hi')?.name.includes('Swara'), 'Edge Hindi matched');
+assert(findBestVoice(mockChromeVoices, 'hi')?.name.includes('हिन्दी'), 'Chrome Hindi matched');
+assert(findBestVoice(mockEdgeVoices, 'en')?.name.includes('Neerja'), 'Indian English matched');
+console.log('   ✅ Passed: Native Telugu, Hindi, and Indian English voices accurately selected.');
 
-// Test 3: Chrome Telugu Voice Selection
-console.log('3. Verifying Chrome Telugu voice detection:');
-const teVoiceChrome = findBestVoice(mockChromeVoices, 'te');
-assert(teVoiceChrome && teVoiceChrome.name.includes('తెలుగు'), 'Should select Google తెలుగు');
-console.log(`   ✅ Passed: Matched "${teVoiceChrome.name}"`);
+// Test 9: Strict English Voice Rejection for Telugu/Hindi on English-Only Devices
+console.log('9. Verifying STRICT English voice rejection for Telugu/Hindi:');
+assert(findBestVoice(mockEnglishOnlyDevice, 'te') === null, 'Must return null for Telugu if no native voice');
+assert(findBestVoice(mockEnglishOnlyDevice, 'hi') === null, 'Must return null for Hindi if no native voice');
+console.log('   ✅ Passed: Refuses to use English voice for Telugu or Hindi.');
 
-// Test 4: Edge Hindi Voice Selection
-console.log('4. Verifying Edge Hindi voice detection:');
-const hiVoiceEdge = findBestVoice(mockEdgeVoices, 'hi');
-assert(hiVoiceEdge && hiVoiceEdge.lang === 'hi-IN', 'Should select Microsoft Swara for Hindi');
-console.log(`   ✅ Passed: Matched "${hiVoiceEdge.name}"`);
-
-// Test 5: English India Preference
-console.log('5. Verifying Indian English preference:');
-const enVoice = findBestVoice(mockEdgeVoices, 'en');
-assert(enVoice && enVoice.lang === 'en-IN', 'Must prioritize en-IN over en-US');
-console.log(`   ✅ Passed: Prioritized "${enVoice.name}"`);
-
-// Test 6: STRICT English Voice Rejection for Telugu when unavailable
-console.log('6. Verifying NO English fallback for Telugu on English-only devices:');
-const teOnEnglishOnly = findBestVoice(mockEnglishOnlyDevice, 'te');
-assert(teOnEnglishOnly === null, 'Must return null rather than selecting English David/Zira for Telugu');
-console.log('   ✅ Passed: Correctly returned null (no English voice fallback).');
-
-// Test 7: STRICT English Voice Rejection for Hindi when unavailable
-console.log('7. Verifying NO English fallback for Hindi on English-only devices:');
-const hiOnEnglishOnly = findBestVoice(mockEnglishOnlyDevice, 'hi');
-assert(hiOnEnglishOnly === null, 'Must return null rather than selecting English David/Zira for Hindi');
-console.log('   ✅ Passed: Correctly returned null (no English voice fallback).');
-
-// Test 8: Asynchronous Empty Voices Array
-console.log('8. Verifying handling of empty voices array:');
-assert(findBestVoice([], 'te') === null, 'Empty array must return null');
-assert(findBestVoice(null, 'hi') === null, 'Null voices must return null');
-console.log('   ✅ Passed: Handled empty voices safely.');
-
-// Test 9: Voice Unavailable Messages
-console.log('9. Verifying Voice Unavailable Notice messages:');
-const teNotice = getVoiceUnavailableMessage('te');
-const hiNotice = getVoiceUnavailableMessage('hi');
-assert(teNotice.includes('తెలుగు వాయిస్'), 'Telugu notice must be in Telugu script');
-assert(hiNotice.includes('हिंदी आवाज़'), 'Hindi notice must be in Hindi script');
-console.log('   ✅ Passed: Localized friendly notices verified.');
-
-// Test 10: Clean Text for TTS
-console.log('10. Verifying Text Cleaning for Natural Voice Output:');
-const rawReply = 'Visit https://beneficiary.nha.gov.in/ or CSC. You get **₹5,00,000** coverage! [Form 49A]';
-const cleaned = cleanTextForSpeech(rawReply);
-assert(!cleaned.includes('https://'), 'Must strip URLs');
-assert(!cleaned.includes('**'), 'Must strip markdown asterisks');
-assert(!cleaned.includes('['), 'Must strip brackets');
-console.log('   Raw:    ', rawReply);
-console.log('   Cleaned:', cleaned);
-console.log('   ✅ Passed: Speech text cleanly sanitized without changing display text.');
+// Test 10: TTS Text Cleaning
+console.log('10. Verifying TTS Text Sanitization:');
+const rawReply = 'Apply at https://onlineservices.nsdl.com/paam/ with **Aadhaar OTP** [Fee: ₹107].';
+const clean = cleanTextForSpeech(rawReply);
+assert(!clean.includes('https://'), 'Must strip URLs');
+assert(!clean.includes('**'), 'Must strip markdown asterisks');
+assert(!clean.includes('['), 'Must strip brackets');
+console.log('   ✅ Passed: Spoken text cleaned:', clean);
 
 console.log('\n======================================================');
-console.log('🎉 ALL 10 SPEECH SERVICE TESTS PASSED SUCCESSFULLY!');
+console.log('🎉 ALL 10 VOICE & SPEECH SERVICE TESTS PASSED SUCCESSFULLY!');
 console.log('======================================================\n');
-

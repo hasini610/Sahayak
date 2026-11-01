@@ -10,7 +10,8 @@ import {
   SPEECH_LOCALES,
   findBestVoice,
   getVoiceUnavailableMessage,
-  cleanTextForSpeech
+  cleanTextForSpeech,
+  SpeechSubmissionManager
 } from '../services/speechService';
 
 export default function AssistantInterface({
@@ -45,6 +46,16 @@ export default function AssistantInterface({
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null);
+
+  // Single-submission lock and transcript accumulator manager
+  const handleSendMessageRef = useRef(null);
+  const submissionManagerRef = useRef(null);
+
+  if (!submissionManagerRef.current) {
+    submissionManagerRef.current = new SpeechSubmissionManager((text) => {
+      handleSendMessageRef.current?.(text);
+    });
+  }
 
   // Load browser speech synthesis voices asynchronously
   useEffect(() => {
@@ -98,36 +109,46 @@ export default function AssistantInterface({
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.interimResults = false;
+      // Allow interim results for visual feedback, but never submit them
+      recognition.interimResults = true;
       recognition.lang = SPEECH_LOCALES[language] || 'en-IN';
 
       recognition.onstart = () => {
         setMicError(null);
         setStatus('listening');
+        submissionManagerRef.current?.reset();
       };
 
+      // Accumulate results separating interim and final; NEVER submit from onresult directly
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript && transcript.trim()) {
-          handleSendMessage(transcript);
+        if (!submissionManagerRef.current) return;
+        const { finalTranscript, interimTranscript } = submissionManagerRef.current.updateFromEvent(event);
+        // Show live preview in input box without triggering any network submission
+        const livePreview = (finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')).trim();
+        if (livePreview) {
+          setInputText(livePreview);
         }
       };
 
       recognition.onerror = (event) => {
         console.warn('Speech recognition error:', event.error);
-        setStatus('idle');
         if (event.error === 'not-allowed') {
           setMicError('Microphone permission was denied. Please allow microphone access or use the text box below.');
+          setStatus('idle');
         } else if (event.error === 'no-speech') {
           setMicError('No speech was detected. Please try again or type below.');
+          setStatus('idle');
         } else {
           setMicError(`Voice error (${event.error}). You can continue by typing.`);
+          setStatus('idle');
         }
       };
 
+      // Finalize and submit accumulated transcript ONCE when speech ends
       recognition.onend = () => {
-        if (status === 'listening') {
-          setStatus('idle');
+        const submitted = submissionManagerRef.current?.finalizeAndSubmit();
+        if (!submitted) {
+          setStatus((prev) => (prev === 'listening' ? 'idle' : prev));
         }
       };
 
@@ -208,6 +229,7 @@ export default function AssistantInterface({
   const startListening = () => {
     setMicError(null);
     stopAudio();
+    submissionManagerRef.current?.reset();
     try {
       if (recognitionRef.current) {
         recognitionRef.current.lang = SPEECH_LOCALES[language] || 'en-IN';
@@ -225,7 +247,11 @@ export default function AssistantInterface({
     } catch (err) {
       //
     }
-    setStatus('idle');
+    // Finalize speech immediately if not already submitted
+    const submitted = submissionManagerRef.current?.finalizeAndSubmit();
+    if (!submitted) {
+      setStatus('idle');
+    }
   };
 
   const handleSendMessage = async (rawMessage) => {
@@ -274,9 +300,13 @@ export default function AssistantInterface({
     speakText(res.reply, responseLang);
   };
 
+  // Keep ref up to date to prevent stale closures
+  handleSendMessageRef.current = handleSendMessage;
+
   const clearChat = () => {
     stopAudio();
     setTtsNotice(null);
+    submissionManagerRef.current?.reset();
     setMessages([]);
     setSteps([]);
     setChecklist([]);

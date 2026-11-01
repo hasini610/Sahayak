@@ -91,3 +91,109 @@ export function cleanTextForSpeech(text) {
     .trim();
 }
 
+/**
+ * Parses Web Speech API SpeechRecognitionEvent results.
+ * Distinguishes between final and interim transcripts across all result indexes.
+ * Never treats interim results as final.
+ */
+export function extractSpeechTranscripts(event, previousFinal = '') {
+  if (!event || !event.results) {
+    return {
+      finalTranscript: previousFinal || '',
+      interimTranscript: '',
+      hasNewFinal: false
+    };
+  }
+
+  let finalParts = [];
+  let interimParts = [];
+
+  const startIndex = typeof event.resultIndex === 'number' ? event.resultIndex : 0;
+
+  for (let i = startIndex; i < event.results.length; i++) {
+    const item = event.results[i];
+    const transcriptText = item[0]?.transcript || '';
+    if (item.isFinal) {
+      if (transcriptText.trim()) finalParts.push(transcriptText.trim());
+    } else {
+      if (transcriptText.trim()) interimParts.push(transcriptText.trim());
+    }
+  }
+
+  const finalChunk = finalParts.join(' ');
+  const interimChunk = interimParts.join(' ');
+
+  let updatedFinal = previousFinal ? previousFinal.trim() : '';
+  if (finalChunk) {
+    updatedFinal = updatedFinal ? `${updatedFinal} ${finalChunk}` : finalChunk;
+  }
+
+  return {
+    finalTranscript: updatedFinal.trim(),
+    interimTranscript: interimChunk.trim(),
+    hasNewFinal: Boolean(finalChunk)
+  };
+}
+
+/**
+ * Manages atomic single-submission locking for voice input.
+ * Prevents duplicate submissions between onresult and onend, and guards against
+ * submitting partial interim results.
+ */
+export class SpeechSubmissionManager {
+  constructor(onSubmit) {
+    this.onSubmit = onSubmit;
+    this.hasSubmitted = false;
+    this.isSubmitting = false;
+    this.accumulatedFinal = '';
+    this.interim = '';
+  }
+
+  reset() {
+    this.hasSubmitted = false;
+    this.isSubmitting = false;
+    this.accumulatedFinal = '';
+    this.interim = '';
+  }
+
+  updateFromEvent(event) {
+    const res = extractSpeechTranscripts(event, this.accumulatedFinal);
+    this.accumulatedFinal = res.finalTranscript;
+    this.interim = res.interimTranscript;
+    return res;
+  }
+
+  finalizeAndSubmit() {
+    // 1. Submission lock: ignore if already submitted or currently sending
+    if (this.hasSubmitted || this.isSubmitting) {
+      return false;
+    }
+
+    // 2. Determine completed text: prefer accumulated final, fallback to interim if browser closed early
+    let textToSubmit = (this.accumulatedFinal || '').trim();
+    if (!textToSubmit && this.interim) {
+      textToSubmit = this.interim.trim();
+    }
+
+    // 3. Reject empty transcripts safely
+    if (!textToSubmit) {
+      this.reset();
+      return false;
+    }
+
+    // 4. Acquire submission locks immediately
+    this.hasSubmitted = true;
+    this.isSubmitting = true;
+
+    try {
+      if (typeof this.onSubmit === 'function') {
+        this.onSubmit(textToSubmit);
+      }
+      return true;
+    } finally {
+      this.isSubmitting = false;
+      this.accumulatedFinal = '';
+      this.interim = '';
+    }
+  }
+}
