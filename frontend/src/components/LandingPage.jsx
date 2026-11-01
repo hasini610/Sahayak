@@ -110,7 +110,7 @@ export default function LandingPage({ language, setLanguage, onStart }) {
         >
           <Mic className="w-6 h-6" />
           <span>{t.startTalking}</span>
-          <ArrowRight className="w-5 h-5 ml-1" />
+         
         </button>
         <p className="text-xs text-slate-500 mt-3">
           Voice-first • No keyboard required • Speech recognition works in browser
@@ -120,7 +120,7 @@ export default function LandingPage({ language, setLanguage, onStart }) {
       {/* Trust & Safety Banner */}
       <div className="mt-12 p-4 rounded-xl bg-slate-100 border border-slate-200/80 text-center">
         <p className="text-xs text-slate-600 leading-relaxed font-medium">
-          🔒 <strong className="text-slate-800">Privacy & Safety Notice:</strong> Sahayak will never ask for your Aadhaar number, OTP, bank PIN, or passwords. All information is strictly retrieved from official portals (.gov.in).
+          <strong className="text-slate-800">Privacy & Safety Notice:</strong> Sahayak will never ask for your Aadhaar number, OTP, bank PIN, or passwords. All information is strictly retrieved from official portals (.gov.in).
         </p>
       </div>
     </div>
