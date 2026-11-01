@@ -1,5 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import { testGeminiConnection } from './services/gemini.js';
+import { processChatMessage } from './services/chatService.js';
+
+// Load environment variables from .env
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -7,8 +13,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Minor backend task for Moksha:
-// 1. Health check route
+// 1. Health check route (Existing Moksha route - preserved)
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -18,7 +23,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 2. Services directory route
+// 2. Services directory route (Existing Moksha route - preserved)
 app.get('/api/services', (req, res) => {
   res.json([
     {
@@ -43,6 +48,56 @@ app.get('/api/services', (req, res) => {
   ]);
 });
 
-app.listen(PORT, () => {
+// 3. Simple Gemini connection test route (Preserved)
+app.get('/api/test-gemini', async (req, res) => {
+  try {
+    const result = await testGeminiConnection();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      tip: 'Please ensure GEMINI_API_KEY is configured in backend/.env'
+    });
+  }
+});
+
+// 4. Main AI Chat Endpoint for Sahayak Voice Assistant
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, language, sessionId } = req.body || {};
+
+    // Validate message
+    if (!message || typeof message !== 'string' || message.trim() === '') {
+      return res.status(400).json({
+        error: 'Invalid request: "message" is required and cannot be empty.'
+      });
+    }
+
+    // Validate & sanitize language (allowed: 'en', 'hi', 'te')
+    const sanitizedLang = ['en', 'hi', 'te'].includes(language) ? language : 'en';
+
+    // Sanitize sessionId
+    const sanitizedSessionId = (sessionId && typeof sessionId === 'string')
+      ? sessionId.slice(0, 100)
+      : 'default_session';
+
+    const response = await processChatMessage({
+      message: message.trim(),
+      language: sanitizedLang,
+      sessionId: sanitizedSessionId
+    });
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error processing /api/chat:', error.message);
+    res.status(500).json({
+      error: 'An error occurred while processing your request. Please try again.',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+});
+
+export const server = app.listen(PORT, () => {
   console.log(`Sahayak backend running on http://localhost:${PORT}`);
 });

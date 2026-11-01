@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, AlertCircle, Sparkles, RotateCcw } from 'lucide-react';
+import { Send, AlertCircle, Sparkles, RotateCcw, VolumeX } from 'lucide-react';
 import VoiceMicButton from './VoiceMicButton';
 import ConversationDisplay from './ConversationDisplay';
 import GuidedStepsUI from './GuidedStepsUI';
 import SourcesPanel from './SourcesPanel';
 import { UI_STRINGS } from '../translations/content';
 import { sendChatMessage } from '../services/api';
+import {
+  SPEECH_LOCALES,
+  findBestVoice,
+  getVoiceUnavailableMessage,
+  cleanTextForSpeech
+} from '../services/speechService';
 
 export default function AssistantInterface({
   language,
@@ -25,6 +31,7 @@ export default function AssistantInterface({
         : language === 'te'
         ? 'నమస్కారం! నేను సహాయక్. నేను మీకు పాన్ కార్డ్ దరఖాస్తు లేదా ఆయుష్మాన్ భారత్ వివరాలను సులభంగా వివరిస్తాను. మాట్లాడటానికి మైక్ నొక్కండి.'
         : 'Namaste! I am Sahayak. I can guide you through applying for a new PAN card or checking Ayushman Bharat benefits. How can I help you today?',
+      language,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -33,22 +40,66 @@ export default function AssistantInterface({
   const [checklist, setChecklist] = useState([]);
   const [sources, setSources] = useState([]);
   const [micError, setMicError] = useState(null);
+  const [ttsNotice, setTtsNotice] = useState(null);
+  const [availableVoices, setAvailableVoices] = useState([]);
 
   const recognitionRef = useRef(null);
-  const synthRef = useRef(window.speechSynthesis);
+  const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null);
 
-  // Initialize Speech Recognition
+  // Load browser speech synthesis voices asynchronously
+  useEffect(() => {
+    const updateVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices() || [];
+        setAvailableVoices(voices);
+      }
+    };
+
+    updateVoices();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  // Sync initial welcome message and clear notices when language changes in header
+  useEffect(() => {
+    setTtsNotice(null);
+    setMicError(null);
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'm1') {
+        return [
+          {
+            id: 'm1',
+            sender: 'assistant',
+            text:
+              language === 'hi'
+                ? 'नमस्ते! मैं सहायक हूँ। मैं आपको नया पैन कार्ड बनवाने या आयुष्मान भारत योजना की जानकारी दे सकता हूँ। आप माइक दबाकर बोल सकते हैं या सवाल लिख सकते हैं।'
+                : language === 'te'
+                ? 'నమస్కారం! నేను సహాయక్. నేను మీకు పాన్ కార్డ్ దరఖాస్తు లేదా ఆయుష్మాన్ భారత్ వివరాలను సులభంగా వివరిస్తాను. మాట్లాడటానికి మైక్ నొక్కండి.'
+                : 'Namaste! I am Sahayak. I can guide you through applying for a new PAN card or checking Ayushman Bharat benefits. How can I help you today?',
+            language,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ];
+      }
+      return prev;
+    });
+  }, [language]);
+
+  // Initialize Speech Recognition with language support (en-IN, hi-IN, te-IN)
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-
-      // Set recognition language
-      if (language === 'hi') recognition.lang = 'hi-IN';
-      else if (language === 'te') recognition.lang = 'te-IN';
-      else recognition.lang = 'en-IN';
+      recognition.lang = SPEECH_LOCALES[language] || 'en-IN';
 
       recognition.onstart = () => {
         setMicError(null);
@@ -91,28 +142,62 @@ export default function AssistantInterface({
     };
   }, [language]);
 
-  // Voice synthesis (Text-to-Speech)
-  const speakText = (text) => {
+  // Multilingual Speech Synthesis (Text-to-Speech)
+  const speakText = (rawText, targetLang = language) => {
     if (isAudioMuted || !window.speechSynthesis) {
       setStatus('idle');
       return;
     }
 
+    // Always cancel previous speech to prevent overlapping audio
     synthRef.current?.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
 
-    if (language === 'hi') utterance.lang = 'hi-IN';
-    else if (language === 'te') utterance.lang = 'te-IN';
-    else utterance.lang = 'en-IN';
+    const cleanedText = cleanTextForSpeech(rawText);
+    if (!cleanedText) {
+      setStatus('idle');
+      return;
+    }
 
-    utterance.rate = 0.95; // Slightly slower for clarity
+    // Refresh voices directly from window.speechSynthesis to avoid stale state
+    const currentVoices =
+      window.speechSynthesis.getVoices().length > 0
+        ? window.speechSynthesis.getVoices()
+        : availableVoices;
+
+    const matchedVoice = findBestVoice(currentVoices, targetLang);
+
+    // Rule: Never play English audio for Hindi or Telugu responses
+    if ((targetLang === 'hi' || targetLang === 'te') && !matchedVoice) {
+      console.warn(`No native voice found for ${targetLang}. Refusing to use English fallback voice.`);
+      setStatus('idle');
+      setTtsNotice(t.voiceUnavailable || getVoiceUnavailableMessage(targetLang));
+      return;
+    }
+
+    setTtsNotice(null);
+
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    if (matchedVoice) {
+      utterance.voice = matchedVoice;
+      utterance.lang = matchedVoice.lang || SPEECH_LOCALES[targetLang] || 'en-IN';
+    } else {
+      utterance.lang = SPEECH_LOCALES[targetLang] || 'en-IN';
+    }
+
+    utterance.rate = 0.95;
     utterance.pitch = 1.0;
 
     utterance.onstart = () => setStatus('speaking');
     utterance.onend = () => setStatus('idle');
-    utterance.onerror = () => setStatus('idle');
+    utterance.onerror = (e) => {
+      console.warn('Speech synthesis error:', e);
+      setStatus('idle');
+    };
 
-    synthRef.current.speak(utterance);
+    // Small delay prevents Chromium cancel-speak race condition
+    setTimeout(() => {
+      synthRef.current?.speak(utterance);
+    }, 40);
   };
 
   const stopAudio = () => {
@@ -124,10 +209,12 @@ export default function AssistantInterface({
     setMicError(null);
     stopAudio();
     try {
+      if (recognitionRef.current) {
+        recognitionRef.current.lang = SPEECH_LOCALES[language] || 'en-IN';
+      }
       recognitionRef.current?.start();
     } catch (err) {
       console.warn('Recognition start failed:', err);
-      // If already started or browser blocked
       setStatus('idle');
     }
   };
@@ -153,6 +240,7 @@ export default function AssistantInterface({
       id: `u_${Date.now()}`,
       sender: 'user',
       text: textToSend.trim(),
+      language,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setMessages((prev) => [...prev, userMsg]);
@@ -165,26 +253,30 @@ export default function AssistantInterface({
       sessionId: 'user_session_1'
     });
 
+    const responseLang = res.language || language;
+
     const botMsg = {
       id: `b_${Date.now()}`,
       sender: 'assistant',
       text: res.reply,
+      language: responseLang,
       timestamp: res.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages((prev) => [...prev, botMsg]);
 
-    // Update guided steps & checklist if returned
-    if (res.steps && res.steps.length > 0) setSteps(res.steps);
-    if (res.checklist && res.checklist.length > 0) setChecklist(res.checklist);
-    if (res.sources && res.sources.length > 0) setSources(res.sources);
+    // Update guided steps & checklist (or clear them if current workflow has none)
+    setSteps(res.steps || []);
+    setChecklist(res.checklist || []);
+    setSources(res.sources || []);
 
-    // Speak response
-    speakText(res.reply);
+    // Speak response in the exact language of the response
+    speakText(res.reply, responseLang);
   };
 
   const clearChat = () => {
     stopAudio();
+    setTtsNotice(null);
     setMessages([]);
     setSteps([]);
     setChecklist([]);
@@ -209,6 +301,23 @@ export default function AssistantInterface({
           <div className="mt-2 max-w-xl mx-auto p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <p className="flex-1">{micError}</p>
+          </div>
+        )}
+
+        {/* Voice Unavailable Friendly Alert */}
+        {ttsNotice && (
+          <div className="mt-3 max-w-xl mx-auto p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <VolumeX className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <p className="flex-1">{ttsNotice}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTtsNotice(null)}
+              className="text-blue-700 hover:text-blue-900 font-bold px-1.5"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -261,13 +370,13 @@ export default function AssistantInterface({
               </button>
             </div>
 
-            {/* Transcript & Message History */}
+            {/* Transcript & Message History with Language-Aware Replay */}
             <ConversationDisplay
               messages={messages}
               status={status}
               language={language}
               fontSize={fontSize}
-              onReplayAudio={speakText}
+              onReplayAudio={(text, msgLang) => speakText(text, msgLang || language)}
             />
 
             {/* Text Input Fallback */}

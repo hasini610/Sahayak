@@ -35,6 +35,7 @@ export const UI_STRINGS = {
       'Explain this to me in simpler words',
     ],
     textFallbackNotice: 'Microphone permissions denied or not supported? You can type directly below.',
+    voiceUnavailable: 'English voice is not available on this device. Please read the response on screen.',
     fontSize: 'Text Size',
     highContrast: 'High Contrast',
   },
@@ -68,6 +69,7 @@ export const UI_STRINGS = {
       'कृपया इसे आसान और सरल भाषा में समझाइए',
     ],
     textFallbackNotice: 'माइक की अनुमति नहीं है? आप नीचे लिखकर भी सवाल पूछ सकते हैं।',
+    voiceUnavailable: 'हिंदी आवाज़ (Hindi Voice) आपके इस ब्राउज़र/डिवाइस में इंस्टॉल नहीं है। कृपया स्क्रीन पर जवाब पढ़ें।',
     fontSize: 'फ़ॉन्ट आकार',
     highContrast: 'उच्च कंट्रास्ट',
   },
@@ -101,6 +103,7 @@ export const UI_STRINGS = {
       'దీన్ని సరళమైన భాషలో వివరించండి',
     ],
     textFallbackNotice: 'మైక్ పనిచేయడం లేదా? మీరు నేరుగా కింద టైప్ చేయవచ్చు.',
+    voiceUnavailable: 'తెలుగు వాయిస్ (Telugu Voice) మీ బ్రౌజర్ లేదా డివైస్‌లో ఇన్‌స్టాల్ కాలేదు. దయచేసి స్క్రీన్‌పై ఉన్న సమాచారాన్ని చదువుకోండి.',
     fontSize: 'అక్షరాల పరిమాణం',
     highContrast: 'హై కాంట్రాస్ట్',
   }
