@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Devanagari & Telugu font fallbacks for native rendering */
+:lang(hi) {
+  font-family: 'Noto Sans Devanagari', 'Plus Jakarta Sans', sans-serif;
+}
+
+:lang(te) {
+  font-family: 'Noto Sans Telugu', 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Accessibility high-contrast styles */
+.high-contrast {
+  --tw-bg-opacity: 1;
+  filter: contrast(115%);
+}
+
+.high-contrast .contrast-boost {
+  border-width: 2px !important;
+  border-color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Pulse animation for microphone */
+@keyframes mic-wave {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7);
+  }
+  70% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 25px rgba(234, 88, 12, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0);
+  }
+}
+
+.animate-mic-wave {
+  animation: mic-wave 1.8s infinite ease-in-out;
+}
+
+/* Thinking shimmer */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
