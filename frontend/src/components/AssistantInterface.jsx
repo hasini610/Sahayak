@@ -14,6 +14,8 @@ import {
   SpeechSubmissionManager
 } from '../services/speechService';
 
+
+import { getOrCreateSessionId } from '../services/sessionService';
 export default function AssistantInterface({
   language,
   fontSize,
@@ -48,6 +50,11 @@ export default function AssistantInterface({
   const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null);
 
   // Single-submission lock and transcript accumulator manager
+  const sessionIdRef = useRef(null);
+  if (!sessionIdRef.current) {
+    sessionIdRef.current = getOrCreateSessionId();
+  }
+
   const handleSendMessageRef = useRef(null);
   const submissionManagerRef = useRef(null);
 
@@ -276,7 +283,7 @@ export default function AssistantInterface({
     const res = await sendChatMessage({
       message: textToSend.trim(),
       language,
-      sessionId: 'user_session_1'
+      sessionId: sessionIdRef.current || getOrCreateSessionId()
     });
 
     const responseLang = res.language || language;

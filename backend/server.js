@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { testGeminiConnection } from './services/gemini.js';
 import { processChatMessage } from './services/chatService.js';
 
@@ -62,8 +63,23 @@ app.get('/api/test-gemini', async (req, res) => {
   }
 });
 
+
+// Rate limiter for chat endpoint: 20 requests per minute per IP
+export const chatLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // 20 requests per minute per IP
+  standardHeaders: true, // Return standard RateLimit-* headers
+  legacyHeaders: false, // Disable X-RateLimit-* headers
+  statusCode: 429,
+  message: {
+    error: 'Too many requests. Please wait a moment before trying again.',
+    tip: 'Rate limit is 20 requests per minute.',
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+});
+
 // 4. Main AI Chat Endpoint for Sahayak Voice Assistant
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
     const { message, language, sessionId } = req.body || {};
 

@@ -8,9 +8,6 @@ const MAX_HISTORY_TURNS = 10;
 const MAX_SESSIONS = 200;
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Backup model if primary experiences high demand (503) or quota limits (429)
-const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
-
 /**
  * Wraps an async call with a timeout promise to protect against hanging network requests.
  */
@@ -140,7 +137,6 @@ export function detectIntentAndWorkflow(message, previousWorkflow = null) {
       lower.includes('days') ||
       lower.includes('proof') ||
       lower.includes('online') ||
-      lower.includes('দ') ||
       lower.includes('दस्तावेज़') ||
       lower.includes('दस्तावेज') ||
       lower.includes('कागजात') ||
@@ -237,7 +233,7 @@ STRICT SAFETY GUARDRAILS:
 /**
  * Intelligent local fallback generator when Gemini API is completely unreachable.
  */
-function generateLocalFallback(message, language, workflow) {
+export function generateLocalFallback(message, language, workflow) {
   const isSimpler =
     message.toLowerCase().includes('simple') ||
     message.toLowerCase().includes('सरल') ||
@@ -358,43 +354,30 @@ export async function processChatMessage({ message, language = 'en', sessionId =
   try {
     const ai = getGeminiClient();
 
-    // Try primary model first
-    try {
-      const response = await callWithTimeout(
-        ai.models.generateContent({
-          model: GEMINI_MODEL,
-          contents,
-          config: { systemInstruction }
-        }),
-        6000
-      );
-      replyText = response.text?.trim() || '';
-    } catch (primaryErr) {
-      // If 503 (high demand), 429 (quota limit), 404 (not found), or timeout, fall back to secondary model
-      const shouldFallback =
-        primaryErr?.status === 503 ||
-        primaryErr?.status === 429 ||
-        primaryErr?.status === 404 ||
-        primaryErr?.message?.includes('quota') ||
-        primaryErr?.message?.includes('timed out');
-
-      if (shouldFallback) {
-        console.warn(`Primary model call notice (${primaryErr.status || primaryErr.message}), switching to fast fallback model...`);
-        const fbResponse = await callWithTimeout(
-          ai.models.generateContent({
-            model: FALLBACK_MODEL,
-            contents,
-            config: { systemInstruction }
-          }),
-          4500
-        );
-        replyText = fbResponse.text?.trim() || '';
-      } else {
-        throw primaryErr;
-      }
-    }
+    const response = await callWithTimeout(
+      ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents,
+        config: { systemInstruction }
+      }),
+      6000
+    );
+    replyText = response.text?.trim() || '';
   } catch (err) {
-    console.warn('Gemini chat error, utilizing verified knowledge fallback:', err.message);
+    const isQuotaOrUnavailable =
+      err?.status === 429 ||
+      err?.status === 503 ||
+      err?.message?.includes('429') ||
+      err?.message?.includes('503') ||
+      err?.message?.includes('quota') ||
+      err?.message?.includes('RESOURCE_EXHAUSTED') ||
+      err?.message?.includes('UNAVAILABLE');
+
+    if (isQuotaOrUnavailable) {
+      console.warn(`Gemini quota/availability notice (${err.status || err.message}), immediately utilizing verified local fallback.`);
+    } else {
+      console.warn('Gemini chat error, utilizing verified knowledge fallback:', err.message);
+    }
     replyText = generateLocalFallback(message, validLang, workflow);
   }
 
