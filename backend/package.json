@@ -4,9 +4,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test:gemini": "node test-connection.js",
+    "test:chat": "node test-chat-endpoint.js"
   },
   "dependencies": {
+    "@google/genai": "^2.32.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1"

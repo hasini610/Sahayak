@@ -87,7 +87,7 @@ export default function ConversationDisplay({
                   </span>
                   <button
                     type="button"
-                    onClick={() => onReplayAudio(msg.text)}
+                    onClick={() => onReplayAudio(msg.text, msg.language || language)}
                     aria-label="Replay audio for this message"
                     title="Listen to this message"
                     className="flex items-center gap-1 hover:text-orange-600 font-semibold px-2 py-1 rounded hover:bg-slate-50 transition-colors"

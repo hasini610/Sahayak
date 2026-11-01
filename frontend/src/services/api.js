@@ -96,6 +96,24 @@ export async function sendChatMessage({ message, language = 'en', sessionId = 's
 
   // Standalone verified response generator for frontend testing
   const lower = message.toLowerCase();
+  const isVoter = lower.includes('voter') || lower.includes('voting') || lower.includes('epic') || lower.includes('वोटर') || lower.includes('मतदाता') || lower.includes('ఓటర్') || lower.includes('ఓటరు');
+  if (isVoter) {
+    let reply = 'Currently, Sahayak only provides guidance for PAN Card (Form 49A) and Ayushman Bharat PM-JAY. Guidance for Voter ID is not currently available. Please visit voters.eci.gov.in.';
+    if (language === 'hi') {
+      reply = 'वर्तमान में, सहायक केवल नया पैन कार्ड (फॉर्म 49A) और आयुष्मान भारत (PM-JAY) के लिए मार्गदर्शन प्रदान करता है। वोटर आईडी मार्गदर्शन अभी उपलब्ध नहीं है। कृपया voters.eci.gov.in पर जाएं।';
+    } else if (language === 'te') {
+      reply = 'ప్రస్తుతం, సహాయక్ కేవలం పాన్ కార్డ్ మరియు ఆయుష్మాన్ భారత్ వివరాలను మాత్రమే అందిస్తుంది. ఓటర్ ఐడి మార్గదర్శకం ప్రస్తుతం అందుబాటులో లేదు. దయచేసి voters.eci.gov.in ని సందర్శించండి.';
+    }
+    return {
+      reply,
+      language,
+      workflow: 'general',
+      steps: [],
+      checklist: [],
+      sources: [{ title: 'National Voters Portal (ECI)', url: 'https://voters.eci.gov.in/' }],
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+  }
   const isAyushman = lower.includes('ayushman') || lower.includes('health') || lower.includes('pmjay') || lower.includes('आयुष्मान') || lower.includes('ఆయుష్మాన్');
   const isSimpler = lower.includes('simple') || lower.includes('सरल') || lower.includes('आसान') || lower.includes('సులభం');
 
