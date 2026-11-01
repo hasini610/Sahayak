@@ -3,6 +3,8 @@ import { Send, AlertCircle, Sparkles, RotateCcw, VolumeX } from 'lucide-react';
 import VoiceMicButton from './VoiceMicButton';
 import ConversationDisplay from './ConversationDisplay';
 import GuidedStepsUI from './GuidedStepsUI';
+import ApplicationJourneyTracker from './ApplicationJourneyTracker';
+import SmartDocumentChecklist from './SmartDocumentChecklist';
 import SourcesPanel from './SourcesPanel';
 import { UI_STRINGS } from '../translations/content';
 import { sendChatMessage } from '../services/api';
@@ -39,6 +41,7 @@ export default function AssistantInterface({
     }
   ]);
 
+  const [currentWorkflow, setCurrentWorkflow] = useState('pan');
   const [steps, setSteps] = useState([]);
   const [checklist, setChecklist] = useState([]);
   const [sources, setSources] = useState([]);
@@ -299,6 +302,11 @@ export default function AssistantInterface({
     setMessages((prev) => [...prev, botMsg]);
 
     // Update guided steps & checklist (or clear them if current workflow has none)
+    if (res.workflow === 'pan_card') {
+      setCurrentWorkflow('pan');
+    } else if (res.workflow === 'ayushman_bharat') {
+      setCurrentWorkflow('ayushman');
+    }
     setSteps(res.steps || []);
     setChecklist(res.checklist || []);
     setSources(res.sources || []);
@@ -452,10 +460,16 @@ export default function AssistantInterface({
 
         {/* Right Column (Guided Steps, Checklist & Official Sources) */}
         <div className="lg:col-span-5 space-y-6">
-          <GuidedStepsUI
-            steps={steps}
-            checklist={checklist}
+          <ApplicationJourneyTracker
             language={language}
+            activeService={currentWorkflow}
+            onServiceChange={setCurrentWorkflow}
+          />
+
+          <SmartDocumentChecklist
+            language={language}
+            activeService={currentWorkflow}
+            onServiceChange={setCurrentWorkflow}
           />
 
           <SourcesPanel

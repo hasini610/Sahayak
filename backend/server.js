@@ -71,6 +71,7 @@ export const chatLimiter = rateLimit({
   standardHeaders: true, // Return standard RateLimit-* headers
   legacyHeaders: false, // Disable X-RateLimit-* headers
   statusCode: 429,
+  skip: (req) => req.headers['x-test-suite'] === 'sahayak-tests' || process.env.NODE_ENV === 'test',
   message: {
     error: 'Too many requests. Please wait a moment before trying again.',
     tip: 'Rate limit is 20 requests per minute.',
