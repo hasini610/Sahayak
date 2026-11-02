@@ -6,7 +6,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test:gemini": "node test-connection.js",
-    "test:chat": "node test-chat-endpoint.js"
+    "test:chat": "node test-chat-endpoint.js",
+    "test:sources": "node test-official-sources.js",
+    "test:centres": "node test-centre-finder.js"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
@@ -14,5 +16,9 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-rate-limit": "^8.7.2"
+  },
+  "allowScripts": {
+    "@google/genai@2.32.0": true,
+    "protobufjs@7.6.6": true
   }
 }
