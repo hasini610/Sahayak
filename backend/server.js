@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { testGeminiConnection } from './services/gemini.js';
 import { processChatMessage } from './services/chatService.js';
+import { searchAuthorisedCentres, OFFICIAL_LOCATOR_PORTALS } from './data/serviceCentres.js';
+import { formatSourcesForResponse, OFFICIAL_SOURCES } from './knowledge/officialSources.js';
 
 // Load environment variables from .env
 dotenv.config();
@@ -63,7 +65,6 @@ app.get('/api/test-gemini', async (req, res) => {
   }
 });
 
-
 // Rate limiter for chat endpoint: 20 requests per minute per IP
 export const chatLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -111,6 +112,75 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     res.status(500).json({
       error: 'An error occurred while processing your request. Please try again.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+});
+
+// 5. Official Source Verification Registry Endpoint (FEATURE 1)
+app.get('/api/sources', (req, res) => {
+  try {
+    const workflow = req.query.workflow;
+    if (workflow) {
+      const sources = formatSourcesForResponse(workflow);
+      return res.json({
+        workflow,
+        count: sources.length,
+        sources,
+        disclaimer: 'All source records represent verified official Government of India portals.'
+      });
+    }
+    // Return all sources grouped
+    res.json({
+      totalSources: OFFICIAL_SOURCES.length,
+      panCardSources: formatSourcesForResponse('pan_card'),
+      ayushmanSources: formatSourcesForResponse('ayushman_bharat'),
+      boundarySources: formatSourcesForResponse('voter_id')
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve official sources' });
+  }
+});
+
+// 6. Nearby Government Service Centre Finder Endpoint (FEATURE 2)
+app.get('/api/centres', (req, res) => {
+  try {
+    const { service = 'pan_card', query = '', pincode = '', lat, lng, radiusKm = 50 } = req.query;
+
+    // Validate coordinates if provided
+    let userLat = null;
+    let userLng = null;
+    if (lat !== undefined && lng !== undefined) {
+      const parsedLat = parseFloat(lat);
+      const parsedLng = parseFloat(lng);
+      if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat >= -90 && parsedLat <= 90 && parsedLng >= -180 && parsedLng <= 180) {
+        userLat = parsedLat;
+        userLng = parsedLng;
+      }
+    }
+
+    // Validate PIN code format if provided
+    let cleanPin = (pincode || '').toString().trim();
+    if (cleanPin && !/^\d{1,6}$/.test(cleanPin)) {
+      return res.status(400).json({
+        error: 'Invalid PIN code. PIN code must contain up to 6 digits.'
+      });
+    }
+
+    const searchResponse = searchAuthorisedCentres({
+      service: service || 'pan_card',
+      query: (query || '').toString().trim().slice(0, 100),
+      pincode: cleanPin,
+      userLat,
+      userLng,
+      maxRadiusKm: Math.min(Math.max(parseInt(radiusKm, 10) || 50, 5), 200)
+    });
+
+    res.json(searchResponse);
+  } catch (err) {
+    console.error('Error in /api/centres:', err.message);
+    res.status(500).json({
+      error: 'Failed to search authorised service centres.',
+      fallbackLocators: OFFICIAL_LOCATOR_PORTALS.pan_card
     });
   }
 });
