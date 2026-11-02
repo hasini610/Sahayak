@@ -19,7 +19,7 @@ export const JOURNEY_WORKFLOWS = {
     titleKey: 'panCard',
     lastVerified: 'November 2026',
     officialPortalName: 'Protean (TIN-NSDL) / UTIITSL Portal',
-    officialPortalUrl: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html',
+    officialPortalUrl: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html',
     officialSources: [
       {
         title: 'Income Tax Department - PAN Portal',
@@ -27,7 +27,7 @@ export const JOURNEY_WORKFLOWS = {
       },
       {
         title: 'Protean eGov Technologies (TIN-NSDL PAN Portal)',
-        url: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html'
+        url: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html'
       },
       {
         title: 'UTIITSL PAN Online Services',
@@ -43,7 +43,7 @@ export const JOURNEY_WORKFLOWS = {
           title: 'Access Official Portal',
           desc: 'Visit the official Protean (TIN-NSDL), UTIITSL, or Income Tax e-Filing portal.',
           venue: 'official_portal',
-          portalUrl: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html'
+          portalUrl: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html'
         },
         {
           id: 2,
@@ -86,7 +86,7 @@ export const JOURNEY_WORKFLOWS = {
           title: 'आधिकारिक पोर्टल खोलें',
           desc: 'Protean (TIN-NSDL), UTIITSL या आयकर विभाग के आधिकारिक ई-फाइलिंग पोर्टल पर जाएं।',
           venue: 'official_portal',
-          portalUrl: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html'
+          portalUrl: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html'
         },
         {
           id: 2,
@@ -129,7 +129,7 @@ export const JOURNEY_WORKFLOWS = {
           title: 'అధికారిక పోర్టల్ తెరవండి',
           desc: 'Protean (TIN-NSDL), UTIITSL లేదా ఆదాయపు పన్ను శాఖ అధికారిక ఈ-ఫైలింగ్ పోర్టల్‌ని సందర్శించండి.',
           venue: 'official_portal',
-          portalUrl: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html'
+          portalUrl: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html'
         },
         {
           id: 2,

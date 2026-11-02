@@ -13,7 +13,7 @@ export const CHECKLIST_SERVICES = {
     titleKey: 'panCard',
     lastVerified: 'November 2026',
     officialPortalName: 'Protean (TIN-NSDL) / UTIITSL Portal',
-    officialPortalUrl: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html',
+    officialPortalUrl: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html',
     officialSources: [
       {
         title: 'Income Tax Department - List of Documents for PAN (Rule 114)',
@@ -21,7 +21,7 @@ export const CHECKLIST_SERVICES = {
       },
       {
         title: 'Protean eGov Technologies - Documents Required for Form F093',
-        url: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html'
+        url: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html'
       },
       {
         title: 'UTIITSL PAN Application Guidance',

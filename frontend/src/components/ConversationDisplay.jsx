@@ -11,12 +11,21 @@ export default function ConversationDisplay({
   onRetry
 }) {
   const t = UI_STRINGS[language] || UI_STRINGS.en;
-  const bottomRef = useRef(null);
+  const containerRef = useRef(null);
+  const prevMessagesCountRef = useRef(messages.length);
   const [openSourcesMsgId, setOpenSourcesMsgId] = useState(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, status]);
+    // Only scroll the internal conversation container when new messages arrive.
+    // NEVER call window/page scrollIntoView so user remains at current viewport position.
+    if (containerRef.current && messages.length > prevMessagesCountRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+    prevMessagesCountRef.current = messages.length;
+  }, [messages]);
 
   const toggleSourceDrawer = (id) => {
     setOpenSourcesMsgId((prev) => (prev === id ? null : id));
@@ -37,7 +46,8 @@ export default function ConversationDisplay({
   };
 
   return (
-    <div 
+    <div
+      ref={containerRef}
       className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-h-[500px] sm:max-h-[580px] scroll-smooth"
       style={{ fontSize: `${fontSize}px` }}
       aria-label="Conversation Transcript"
@@ -204,7 +214,6 @@ export default function ConversationDisplay({
         </div>
       )}
 
-      <div ref={bottomRef} />
-    </div>
+      </div>
   );
 }

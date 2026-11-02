@@ -29,7 +29,7 @@ export const FALLBACK_KNOWLEDGE = {
         id: 'protean_pan',
         title: 'Protean eGov Technologies (NSDL PAN Portal)',
         organisation: 'Protean eGov Technologies Limited (Authorised by Income Tax Dept, GoI)',
-        url: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html',
+        url: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html',
         domain: 'nsdl.com / proteantech.in',
         authorityType: 'Authorised Statutory Service Provider',
         lastVerifiedDate: '2026-10-15',

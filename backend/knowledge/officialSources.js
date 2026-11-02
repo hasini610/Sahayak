@@ -14,7 +14,7 @@ export const OFFICIAL_SOURCES = [
     service: 'pan_card',
     title: 'Protean eGov Technologies - Online PAN Application Portal',
     organisation: 'Protean eGov Technologies Limited (Authorised by Income Tax Department, GoI)',
-    portalUrl: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html',
+    portalUrl: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html',
     authorityType: 'Authorised Statutory Service Provider',
     domain: 'nsdl.com / proteantech.in',
     lastVerifiedDate: '2026-10-15',

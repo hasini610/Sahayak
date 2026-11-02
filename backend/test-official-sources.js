@@ -17,7 +17,7 @@ for (const src of OFFICIAL_SOURCES) {
   assert(src.organisation, 'Source must specify the authoritative organisation');
   assert(src.portalUrl.startsWith('https://'), 'Source URL must use secure HTTPS');
   assert(
-    src.portalUrl.includes('.gov.in') || src.portalUrl.includes('nsdl.com') || src.portalUrl.includes('utiitsl.com'),
+    src.portalUrl.includes('.gov.in') || src.portalUrl.includes('nsdl.com') || src.portalUrl.includes('proteantech.in') || src.portalUrl.includes('utiitsl.com'),
     `Source URL (${src.portalUrl}) must be an official government or statutory provider domain`
   );
   assert(/^\d{4}-\d{2}-\d{2}$/.test(src.lastVerifiedDate), 'Source must have valid YYYY-MM-DD verified date');

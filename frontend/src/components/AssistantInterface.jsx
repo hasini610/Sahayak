@@ -142,6 +142,7 @@ export default function AssistantInterface({
 
       recognition.onerror = (event) => {
         console.warn('Speech recognition error:', event.error);
+        submissionManagerRef.current?.reset();
         if (event.error === 'not-allowed') {
           setMicError('Microphone permission was denied. Please allow microphone access or use the text box below.');
           setStatus('idle');
@@ -154,7 +155,7 @@ export default function AssistantInterface({
         }
       };
 
-      // Finalize and submit accumulated transcript ONCE when speech ends
+      // Finalize and automatically send captured transcript to assistant once speech ends
       recognition.onend = () => {
         const submitted = submissionManagerRef.current?.finalizeAndSubmit();
         if (!submitted) {
@@ -257,7 +258,6 @@ export default function AssistantInterface({
     } catch (err) {
       //
     }
-    // Finalize speech immediately if not already submitted
     const submitted = submissionManagerRef.current?.finalizeAndSubmit();
     if (!submitted) {
       setStatus('idle');
@@ -454,19 +454,19 @@ export default function AssistantInterface({
                 {t.textFallbackNotice}
               </p>
             </div>
-
           </div>
-        </div>
 
-        {/* Right Column (Guided Steps, Checklist & Official Sources) */}
-        <div className="lg:col-span-5 space-y-6">
-          <ApplicationJourneyTracker
+          {/* Smart Document Checklist (Directly below Conversation in Left Column) */}
+          <SmartDocumentChecklist
             language={language}
             activeService={currentWorkflow}
             onServiceChange={setCurrentWorkflow}
           />
+        </div>
 
-          <SmartDocumentChecklist
+        {/* Right Column (Application Journey Tracker & Official Sources) */}
+        <div className="lg:col-span-5 space-y-6">
+          <ApplicationJourneyTracker
             language={language}
             activeService={currentWorkflow}
             onServiceChange={setCurrentWorkflow}
