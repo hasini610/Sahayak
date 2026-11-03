@@ -1,8 +1,12 @@
 import React from 'react';
 import { languages, UI_STRINGS } from '../translations/content';
-import { Mic, ArrowRight, ShieldCheck, HeartHandshake, FileText, CheckCircle2 } from 'lucide-react';
+import { Mic, ShieldCheck, HeartHandshake, FileText, CheckCircle2 } from 'lucide-react';
+import FeatureCards from './FeatureCards';
+import HowItWorks from './HowItWorks';
+import FinalCTA from './FinalCTA';
+import Footer from './Footer';
 
-export default function LandingPage({ language, setLanguage, onStart }) {
+export default function LandingPage({ language, setLanguage, onStart, onExplore }) {
   const t = UI_STRINGS[language] || UI_STRINGS.en;
 
   return (
@@ -13,17 +17,17 @@ export default function LandingPage({ language, setLanguage, onStart }) {
           <ShieldCheck className="w-4 h-4 text-orange-600" />
           <span>Multilingual Voice-First Public Service Assistant</span>
         </div>
-
+        {/* Headline */}
         <h1 className="text-4xl sm:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          Welcome to <span className="bg-gradient-to-r from-orange-600 via-amber-600 to-emerald-600 bg-clip-text text-transparent">Sahayak</span>
+          Government services, made simpler.
         </h1>
-
+        {/* Sub‑headline */}
         <p className="max-w-2xl mx-auto text-base sm:text-xl text-slate-600 leading-relaxed">
-          {t.appSubtitle}. Ask questions in your own language, receive step-by-step guidance, and get verified checklists from official sources.
+          Understand government services, find the information you need, and get guided assistance in your preferred language.
         </p>
       </div>
 
-      {/* Language Picker Section */}
+      {/* Language Picker */}
       <div className="mt-10 max-w-3xl mx-auto">
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 text-center">
           {t.chooseLanguage}
@@ -52,9 +56,9 @@ export default function LandingPage({ language, setLanguage, onStart }) {
         </div>
       </div>
 
-      {/* MVP Workflows Preview */}
+      {/* Workflow preview cards (retain existing) */}
       <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* PAN Card Card */}
+        {/* PAN Card */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="absolute top-0 left-0 h-1.5 w-full bg-orange-500" />
           <div className="flex items-start gap-4">
@@ -67,17 +71,16 @@ export default function LandingPage({ language, setLanguage, onStart }) {
               <p className="text-xs text-slate-600 mt-1">{t.panCardDesc}</p>
               <ul className="mt-3 space-y-1.5 text-xs text-slate-500">
                 <li className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Form 49A step-by-step guidance
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Form 49A step‑by‑step guidance
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aadhaar OTP verification & ₹107 fee details
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aadhaar OTP verification &amp; ₹107 fee details
                 </li>
               </ul>
             </div>
           </div>
         </div>
-
-        {/* Ayushman Bharat Card */}
+        {/* Ayushman Bharat */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="absolute top-0 left-0 h-1.5 w-full bg-emerald-600" />
           <div className="flex items-start gap-4">
@@ -90,10 +93,10 @@ export default function LandingPage({ language, setLanguage, onStart }) {
               <p className="text-xs text-slate-600 mt-1">{t.ayushmanBharatDesc}</p>
               <ul className="mt-3 space-y-1.5 text-xs text-slate-500">
                 <li className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ₹5 Lakh free medical cover details
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ₹5 Lakh free medical cover details
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> SECC & Ration Card eligibility checker
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> SECC &amp; Ration Card eligibility checker
                 </li>
               </ul>
             </div>
@@ -101,26 +104,41 @@ export default function LandingPage({ language, setLanguage, onStart }) {
         </div>
       </div>
 
-      {/* Start Button */}
-      <div className="mt-10 text-center">
+      {/* Primary & Secondary CTA buttons */}
+      <div className="mt-10 text-center space-x-4">
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white font-bold text-lg sm:text-xl shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus:ring-4 focus:ring-orange-300"
+          className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white font-bold text-lg sm:text-xl shadow-lg hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           <Mic className="w-6 h-6" />
-          <span>{t.startTalking}</span>
-         
+          {t.startTalking}
         </button>
-        <p className="text-xs text-slate-500 mt-3">
-          Voice-first • No keyboard required • Speech recognition works in browser
-        </p>
+        <button
+          type="button"
+          onClick={onExplore}
+          className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gray-200 text-gray-800 font-medium text-lg hover:bg-gray-300 transition"
+        >
+          Explore Services
+        </button>
       </div>
 
-      {/* Trust & Safety Banner */}
+      {/* Feature cards */}
+      <FeatureCards language={language} />
+
+      {/* How‑It‑Works */}
+      <HowItWorks language={language} />
+
+      {/* Final CTA */}
+      <FinalCTA onTalk={onStart} language={language} />
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Trust & Safety banner */}
       <div className="mt-12 p-4 rounded-xl bg-slate-100 border border-slate-200/80 text-center">
         <p className="text-xs text-slate-600 leading-relaxed font-medium">
-          <strong className="text-slate-800">Privacy & Safety Notice:</strong> Sahayak will never ask for your Aadhaar number, OTP, bank PIN, or passwords. All information is strictly retrieved from official portals (.gov.in).
+          <strong className="text-slate-800">Privacy &amp; Safety Notice:</strong> Sahayak will never ask for your Aadhaar number, OTP, bank PIN, or passwords. All information is strictly retrieved from official portals (.gov.in).
         </p>
       </div>
     </div>

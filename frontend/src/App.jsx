@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import LandingPage from './components/LandingPage';
-import AssistantInterface from './components/AssistantInterface';
+import Home from './pages/Home';
+import MyServices from './pages/MyServices';
+import Explore from './pages/Explore';
 import { checkBackendHealth } from './services/api';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'assistant'
+  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'myservices' | 'explore'
   const [language, setLanguage] = useState('hi'); // Default to Hindi for Sahayak
   const [fontSize, setFontSize] = useState(16);
   const [highContrast, setHighContrast] = useState(false);
@@ -13,10 +14,11 @@ export default function App() {
   const [backendStatus, setBackendStatus] = useState(null);
 
   useEffect(() => {
-    checkBackendHealth().then((res) => {
-      setBackendStatus(res?.status || 'mock_mode');
-    });
+    checkBackendHealth().then((res) => setBackendStatus(res?.status || 'mock_mode'));
   }, []);
+
+  // Reset to Home (used when clicking logo)
+  const handleReset = () => setCurrentPage('home');
 
   return (
     <div className={`min-h-screen flex flex-col bg-slate-50 transition-colors ${highContrast ? 'high-contrast bg-neutral-900 text-yellow-300' : ''}`}>
@@ -30,24 +32,24 @@ export default function App() {
         setHighContrast={setHighContrast}
         isAudioMuted={isAudioMuted}
         setIsAudioMuted={setIsAudioMuted}
-        onReset={() => setCurrentView('landing')}
+        onReset={handleReset}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
       />
 
       {/* Main View Area */}
       <main className="flex-1 pb-12">
-        {currentView === 'landing' ? (
-          <LandingPage
-            language={language}
-            setLanguage={setLanguage}
-            onStart={() => setCurrentView('assistant')}
-          />
-        ) : (
-          <AssistantInterface
+        {currentPage === 'home' && (
+          <Home
             language={language}
             fontSize={fontSize}
             isAudioMuted={isAudioMuted}
+            setLanguage={setLanguage}
+            setCurrentPage={setCurrentPage}
           />
         )}
+        {currentPage === 'myservices' && <MyServices language={language} />}
+        {currentPage === 'explore' && <Explore language={language} />}
       </main>
 
       {/* Footer & Status Bar */}
@@ -56,14 +58,9 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             <span className="font-semibold text-slate-700">Sahayak Voice Assistant</span>
-            <span>• Hackathon Frontend (Moksha)</span>
+            
           </div>
-          <div className="text-slate-400">
-            Node / Express Backend Status:{' '}
-            <span className="font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-              {backendStatus === 'ok' ? 'Online (Express :5000)' : 'Standalone Ready'}
-            </span>
-          </div>
+          
         </div>
       </footer>
     </div>
