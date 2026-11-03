@@ -37,7 +37,6 @@ export const UI_STRINGS = {
     textFallbackNotice: 'Microphone permissions denied or not supported? You can type directly below.',
     voiceUnavailable: 'English voice is not available on this device. Please read the response on screen.',
     fontSize: 'Text Size',
-    highContrast: 'High Contrast',
     trackerTitle: 'Application Journey Tracker',
     trackerSubtitle: 'Interactive Step-by-Step Guidance',
     trackerGuidanceNote: 'Guidance Only: Marking steps tracks your personal preparation. Official applications, payments, and approvals take place on government portals, not inside Sahayak.',
