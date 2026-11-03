@@ -409,11 +409,8 @@ export default function CentreFinder({ language = 'en', initialService = 'pan_ca
         )
       )}
 
-      {/* Official Directory Disclaimer */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-        <span>🛡️ Only certified TIN-FC, UTIITSL & CSC centres listed.</span>
-        <span>Directory updated October 2026</span>
-      </div>
+      
+      
     </div>
   );
 }

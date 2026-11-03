@@ -9,10 +9,11 @@ export default function Navbar({
   setFontSize,
   highContrast,
   setHighContrast,
-  status,
   isAudioMuted,
   setIsAudioMuted,
-  onReset
+  onReset,
+  currentPage,
+  setCurrentPage,
 }) {
   const t = UI_STRINGS[language] || UI_STRINGS.en;
 
@@ -20,7 +21,6 @@ export default function Navbar({
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 transition-colors shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
-          
           {/* Logo & Identity */}
           <div 
             onClick={onReset}
@@ -49,9 +49,33 @@ export default function Navbar({
             </div>
           </div>
 
+          {/* Primary Navigation */}
+          <nav className="flex gap-4 items-center text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setCurrentPage('home')}
+              className={`px-3 py-1 rounded ${currentPage === 'home' ? 'bg-orange-100 text-orange-800' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              Home
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage('myservices')}
+              className={`px-3 py-1 rounded ${currentPage === 'myservices' ? 'bg-orange-100 text-orange-800' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              My Services
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage('explore')}
+              className={`px-3 py-1 rounded ${currentPage === 'explore' ? 'bg-orange-100 text-orange-800' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              Explore
+            </button>
+          </nav>
+
           {/* Controls: Language, Text Size, Accessibility */}
           <div className="flex items-center gap-2 sm:gap-3">
-            
             {/* Language Selector */}
             <div className="relative inline-flex items-center">
               <Globe className="w-4 h-4 text-slate-500 absolute left-2.5 pointer-events-none" />
@@ -69,46 +93,8 @@ export default function Navbar({
               </select>
             </div>
 
-            {/* Accessibility: Font Size toggler */}
-            <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setFontSize(Math.max(14, fontSize - 2))}
-                title="Decrease font size"
-                aria-label="Decrease text size"
-                className="px-2 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 rounded hover:bg-white"
-              >
-                A-
-              </button>
-              <span className="text-xs px-1 text-slate-400 font-mono">
-                {fontSize}px
-              </span>
-              <button
-                type="button"
-                onClick={() => setFontSize(Math.min(22, fontSize + 2))}
-                title="Increase font size"
-                aria-label="Increase text size"
-                className="px-2 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 rounded hover:bg-white"
-              >
-                A+
-              </button>
-            </div>
 
-            {/* High Contrast Toggle */}
-            <button
-              type="button"
-              onClick={() => setHighContrast(!highContrast)}
-              title={t.highContrast}
-              aria-label="Toggle High Contrast Mode"
-              className={`p-2 rounded-lg border text-xs font-medium flex items-center gap-1 transition-all ${
-                highContrast 
-                  ? 'bg-black text-yellow-300 border-black' 
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <Eye className="w-4 h-4" />
-              <span className="hidden xl:inline">{t.highContrast}</span>
-            </button>
+
 
             {/* Audio Mute / Unmute */}
             <button
@@ -124,9 +110,7 @@ export default function Navbar({
             >
               {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
-
           </div>
-
         </div>
       </div>
     </header>

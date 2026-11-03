@@ -151,16 +151,7 @@ export default function SourcesPanel({ sources = [], language = 'en' }) {
         </div>
       )}
 
-      {/* Trust & Verification Disclaimer Notice */}
-      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-slate-700 text-xs space-y-1">
-        <div className="flex items-center gap-1.5 font-bold text-slate-800 text-[11px]">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-          <span>Statutory Data Integrity Rule:</span>
-        </div>
-        <p className="text-[11px] text-slate-600 leading-relaxed">
-          {t.sourceAuditNotice}
-        </p>
-      </div>
+      
     </div>
   );
 }
