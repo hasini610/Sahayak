@@ -11,7 +11,7 @@ export const VERIFIED_KNOWLEDGE = {
     serviceName: 'PAN Card Guidance (Permanent Account Number)',
     officialPortals: [
       { title: 'Income Tax Department - e-Filing Portal', url: 'https://www.incometax.gov.in/iec/foportal/' },
-      { title: 'Protean eGov Technologies (NSDL PAN Portal)', url: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html' },
+      { title: 'Protean eGov Technologies (Official PAN Portal)', url: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html' },
       { title: 'UTIITSL PAN Online Portal', url: 'https://www.pan.utiitsl.com/' }
     ],
     rules: {

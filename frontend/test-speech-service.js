@@ -178,7 +178,7 @@ console.log('   ✅ Passed: Refuses to use English voice for Telugu or Hindi.');
 
 // Test 10: TTS Text Cleaning
 console.log('10. Verifying TTS Text Sanitization:');
-const rawReply = 'Apply at https://onlineservices.nsdl.com/paam/ with **Aadhaar OTP** [Fee: ₹107].';
+const rawReply = 'Apply at https://onlineservices.proteantech.in/paam/ with **Aadhaar OTP** [Fee: ₹107].';
 const clean = cleanTextForSpeech(rawReply);
 assert(!clean.includes('https://'), 'Must strip URLs');
 assert(!clean.includes('**'), 'Must strip markdown asterisks');

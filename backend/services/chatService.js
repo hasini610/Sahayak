@@ -1,6 +1,17 @@
 import { getGeminiClient, GEMINI_MODEL } from './gemini.js';
 import { VERIFIED_KNOWLEDGE } from '../knowledge/knowledgeBase.js';
 import { formatSourcesForResponse, getSourcesForWorkflow } from '../knowledge/officialSources.js';
+import {
+  STEP_GUIDANCE_DATA,
+  isExplicitStepGuidanceRequest,
+  isStepConfirmation,
+  isStepConfusionOrHelp,
+  isStepExitRequest,
+  formatStepResponse,
+  formatCompletionResponse,
+  formatExitResponse,
+  formatStepCheckpoint
+} from '../knowledge/interactiveGuidance.js';
 
 // In-memory conversation session store
 // Format: sessionId -> { history: [{ role: 'user'|'model', text: string }], lastWorkflow: string, lastActive: number }
@@ -297,6 +308,7 @@ export async function processChatMessage({ message, language = 'en', sessionId =
     sessions.set(sessionId, {
       history: [],
       lastWorkflow: null,
+      guidanceState: null,
       lastActive: Date.now()
     });
   }
@@ -320,6 +332,9 @@ export async function processChatMessage({ message, language = 'en', sessionId =
 
   // Handle unsupported services (Voter ID, etc.)
   if (classification.isUnsupported) {
+    if (session.guidanceState) {
+      session.guidanceState = null;
+    }
     const replyText = buildUnsupportedServiceResponse(classification.serviceType, validLang);
 
     session.history.push({ role: 'user', text: message });
@@ -338,6 +353,156 @@ export async function processChatMessage({ message, language = 'en', sessionId =
       checklist: [],
       sources: boundarySources.length > 0 ? boundarySources : (VERIFIED_KNOWLEDGE.general?.voterPortals || []),
       verificationNotice: 'Boundary check: Guidance for this service is not supported. Directing to official constitutional portal.',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+  }
+
+  // 1. Check if user is currently in active interactive step guidance
+  if (session.guidanceState?.active) {
+    const guidance = session.guidanceState;
+    const totalSteps = STEP_GUIDANCE_DATA[guidance.workflow]?.totalSteps || 6;
+
+    // A. User requests to exit or stop step guidance
+    if (isStepExitRequest(message)) {
+      session.guidanceState = null;
+      const replyText = formatExitResponse({ language: validLang });
+
+      session.history.push({ role: 'user', text: message });
+      session.history.push({ role: 'model', text: replyText });
+      if (session.history.length > MAX_HISTORY_TURNS) {
+        session.history = session.history.slice(-MAX_HISTORY_TURNS);
+      }
+
+      const kbData = VERIFIED_KNOWLEDGE[workflow] || VERIFIED_KNOWLEDGE.general || {};
+      const localizedData = kbData[validLang] || kbData.en || {};
+
+      return {
+        reply: replyText,
+        language: validLang,
+        workflow,
+        steps: localizedData.steps || [],
+        checklist: localizedData.checklist || [],
+        sources: verifiedSources,
+        verificationNotice,
+        guidanceState: { active: false },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }
+
+    // B. User confirms completion of current step or requests next step
+    if (isStepConfirmation(message)) {
+      const nextStepIndex = guidance.stepIndex + 1;
+      let replyText = '';
+
+      if (nextStepIndex > totalSteps) {
+        session.guidanceState = null;
+        replyText = formatCompletionResponse({ workflow: guidance.workflow, language: validLang });
+      } else {
+        guidance.stepIndex = nextStepIndex;
+        replyText = formatStepResponse({
+          workflow: guidance.workflow,
+          stepIndex: nextStepIndex,
+          language: validLang,
+          isInitial: false
+        });
+      }
+
+      session.history.push({ role: 'user', text: message });
+      session.history.push({ role: 'model', text: replyText });
+      if (session.history.length > MAX_HISTORY_TURNS) {
+        session.history = session.history.slice(-MAX_HISTORY_TURNS);
+      }
+
+      const kbData = VERIFIED_KNOWLEDGE[guidance.workflow] || {};
+      const localizedData = kbData[validLang] || kbData.en || {};
+
+      return {
+        reply: replyText,
+        language: validLang,
+        workflow: guidance.workflow,
+        steps: localizedData.steps || [],
+        checklist: localizedData.checklist || [],
+        sources: verifiedSources,
+        verificationNotice,
+        guidanceState: session.guidanceState
+          ? { active: true, step: guidance.stepIndex, totalSteps }
+          : { active: false },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }
+
+    // C. User says they are confused or need a simpler explanation
+    if (isStepConfusionOrHelp(message)) {
+      const replyText = formatStepResponse({
+        workflow: guidance.workflow,
+        stepIndex: guidance.stepIndex,
+        language: validLang,
+        isInitial: false,
+        isSimpler: true
+      });
+
+      session.history.push({ role: 'user', text: message });
+      session.history.push({ role: 'model', text: replyText });
+      if (session.history.length > MAX_HISTORY_TURNS) {
+        session.history = session.history.slice(-MAX_HISTORY_TURNS);
+      }
+
+      const kbData = VERIFIED_KNOWLEDGE[guidance.workflow] || {};
+      const localizedData = kbData[validLang] || kbData.en || {};
+
+      return {
+        reply: replyText,
+        language: validLang,
+        workflow: guidance.workflow,
+        steps: localizedData.steps || [],
+        checklist: localizedData.checklist || [],
+        sources: verifiedSources,
+        verificationNotice,
+        guidanceState: { active: true, step: guidance.stepIndex, totalSteps },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }
+
+    // D. Mid-step question: Will be processed below without advancing stepIndex,
+    // and a checkpoint prompt will be appended.
+  }
+
+  // 2. Check if user is initiating a new step-by-step guidance request
+  if (isExplicitStepGuidanceRequest(message)) {
+    const targetWorkflow = (workflow === 'ayushman_bharat') ? 'ayushman_bharat' : 'pan_card';
+    session.guidanceState = {
+      active: true,
+      workflow: targetWorkflow,
+      stepIndex: 1
+    };
+    session.lastWorkflow = targetWorkflow;
+
+    const replyText = formatStepResponse({
+      workflow: targetWorkflow,
+      stepIndex: 1,
+      language: validLang,
+      isInitial: true
+    });
+
+    session.history.push({ role: 'user', text: message });
+    session.history.push({ role: 'model', text: replyText });
+    if (session.history.length > MAX_HISTORY_TURNS) {
+      session.history = session.history.slice(-MAX_HISTORY_TURNS);
+    }
+
+    const kbData = VERIFIED_KNOWLEDGE[targetWorkflow] || {};
+    const localizedData = kbData[validLang] || kbData.en || {};
+    const totalSteps = STEP_GUIDANCE_DATA[targetWorkflow]?.totalSteps || 6;
+
+    return {
+      reply: replyText,
+      language: validLang,
+      workflow: targetWorkflow,
+      steps: localizedData.steps || [],
+      checklist: localizedData.checklist || [],
+      sources: formatSourcesForResponse(targetWorkflow),
+      verificationNotice,
+      guidanceState: { active: true, step: 1, totalSteps },
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
   }
@@ -389,6 +554,16 @@ export async function processChatMessage({ message, language = 'en', sessionId =
     replyText = generateLocalFallback(message, validLang, workflow);
   }
 
+  // If user was in active guidance and asked a specific question, append the step checkpoint
+  if (session.guidanceState?.active) {
+    const checkpoint = formatStepCheckpoint({
+      workflow: session.guidanceState.workflow,
+      stepIndex: session.guidanceState.stepIndex,
+      language: validLang
+    });
+    replyText += checkpoint;
+  }
+
   // Ensure replyText is clean for TTS
   replyText = replyText
     .replace(/[*#_~`]/g, '')
@@ -417,6 +592,13 @@ export async function processChatMessage({ message, language = 'en', sessionId =
     checklist,
     sources: verifiedSources,
     verificationNotice,
+    guidanceState: session.guidanceState
+      ? {
+          active: session.guidanceState.active,
+          step: session.guidanceState.stepIndex,
+          totalSteps: STEP_GUIDANCE_DATA[session.guidanceState.workflow]?.totalSteps || 6
+        }
+      : { active: false },
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 }

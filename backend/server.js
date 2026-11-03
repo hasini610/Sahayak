@@ -33,7 +33,7 @@ app.get('/api/services', (req, res) => {
       id: 'pan',
       title: 'PAN Card Application & Guidance',
       forms: ['Form 49A (Indian Citizens)', 'Form 49AA (Foreign Citizens)'],
-      officialPortal: 'https://www.onlineservices.nsdl.com/paam/endUserRegisterContact.html',
+      officialPortal: 'https://onlineservices.proteantech.in/paam/endUserRegisterContact.html',
       fee: {
         physicalCard: 107,
         ePan: 72,
