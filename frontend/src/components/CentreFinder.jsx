@@ -351,7 +351,7 @@ export default function CentreFinder({ language = 'en', initialService = 'pan_ca
               {/* Action Buttons: Get Directions on Google Maps */}
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ Verified Statutory Directory
+                  Curated Sample Dataset (not a comprehensive certified directory)
                 </span>
 
                 <a
@@ -409,11 +409,8 @@ export default function CentreFinder({ language = 'en', initialService = 'pan_ca
         )
       )}
 
-      {/* Official Directory Disclaimer */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-        <span>🛡️ Only certified TIN-FC, UTIITSL & CSC centres listed.</span>
-        <span>Directory updated October 2026</span>
-      </div>
+      
+      
     </div>
   );
 }
