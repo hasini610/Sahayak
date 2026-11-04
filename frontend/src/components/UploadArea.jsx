@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { AlertTriangle, FileImage, FileText } from 'lucide-react';
 import { UI_STRINGS } from '../translations/content';
 
@@ -16,6 +16,15 @@ export default function UploadArea({ onFileSelect, language }) {
 
   const maxSize = 5 * 1024 * 1024; // 5 MiB
   const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+
+  // Clean up previous object URL when previewUrl changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const validate = (file) => {
     if (!allowedTypes.includes(file.type)) {
@@ -62,7 +71,11 @@ export default function UploadArea({ onFileSelect, language }) {
       onClick={() => inputRef.current && inputRef.current.click()}
     >
       {previewUrl ? (
-        <img src={previewUrl} alt="preview" className="mx-auto mb-4 max-h-48 object-contain" />
+        <img
+          src={previewUrl}
+          alt="Document preview"
+          className="mx-auto mb-4 max-h-48 object-contain rounded border border-slate-200"
+        />
       ) : (
         <FileText className="w-12 h-12 mx-auto text-slate-400 mb-2" />
       )}
