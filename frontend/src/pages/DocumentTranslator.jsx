@@ -24,39 +24,13 @@ export default function DocumentTranslator({ language }) {
     setError('');
   };
 
+  // Translate handler – guarded because backend is not yet implemented
   const handleTranslate = async () => {
-  // Guard – backend not yet implemented
-  if (!TRANSLATOR_ENABLED) {
-    setError(t.backendPending || 'Backend integration pending.');
-    return;
-  }
-  // Ensure a file is selected
-  if (!file) {
-    setError(t.fileTypeError);
-    return;
-  }
-  setLoading(true);
-  setError('');
-  const form = new FormData();
-  form.append('file', file);
-  form.append('language', targetLang);
-  try {
-    const resp = await fetch('/api/document/process', {
-      method: 'POST',
-      body: form,
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    setResult(data);
-    setActiveTab('original');
-  } catch (e) {
-    console.error(e);
-    setError(t.uploadFailed);
-  } finally {
-    setLoading(false);
-  }
-}; {
-    if (!TRANSLATOR_ENABLED) { setError(t.backendPending || 'Backend integration pending.'); return; }
+    if (!TRANSLATOR_ENABLED) {
+      setError(t.backendPending || 'Backend integration pending.');
+      return;
+    }
+    if (!file) {
       setError(t.fileTypeError);
       return;
     }
