@@ -138,6 +138,7 @@ export async function checkBackendHealth() {
   return { status: 'mock_mode', message: 'Running in frontend standalone mode with verified knowledge' };
 }
 
+// Fetch available services
 export async function fetchServices() {
   try {
     const res = await fetch(`${API_BASE}/services`, { method: 'GET', signal: AbortSignal.timeout(2000) });
@@ -152,6 +153,51 @@ export async function fetchServices() {
     { id: 'ayushman', name: 'Ayushman Bharat PM-JAY', active: true }
   ];
 }
+
+/**
+ * Process document upload for translation and key information extraction (FEATURE 3)
+ */
+export async function processDocumentUpload(file, language = 'en') {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('language', language);
+
+  try {
+    const res = await fetch(`${API_BASE}/document/process`, {
+      method: 'POST',
+      body: formData,
+      signal: AbortSignal.timeout(90000), // 90-second client timeout
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        throw new Error(data?.error || 'Rate limit reached: Gemini API is temporarily busy. Please wait a minute and try again.');
+      }
+      if (res.status === 503 || res.status === 502) {
+        throw new Error(data?.error || 'AI translation service is temporarily unavailable. Please retry in a few moments.');
+      }
+      if (res.status === 504) {
+        throw new Error(data?.error || 'Document processing timed out on the server. Please try again with a clearer or smaller document.');
+      }
+      throw new Error(data?.error || `Server responded with status ${res.status}`);
+    }
+
+    if (!data || !data.success) {
+      throw new Error(data?.error || 'Failed to process document. Please ensure the document is clear and readable.');
+    }
+
+    return data;
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      throw new Error('Document processing timed out after 90 seconds. Please try again or upload a clearer document.');
+    }
+    throw err;
+  }
+}
+
+
 
 /**
  * Fetch official verified sources registry (FEATURE 1)

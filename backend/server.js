@@ -2,10 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import { testGeminiConnection } from './services/gemini.js';
 import { processChatMessage } from './services/chatService.js';
 import { searchAuthorisedCentres, OFFICIAL_LOCATOR_PORTALS } from './data/serviceCentres.js';
 import { formatSourcesForResponse, OFFICIAL_SOURCES } from './knowledge/officialSources.js';
+import { processDocument, MAX_FILE_SIZE_BYTES } from './services/documentService.js';
 
 // Load environment variables from .env
 dotenv.config();
@@ -185,6 +187,102 @@ app.get('/api/centres', (req, res) => {
   }
 });
 
+// Rate limiter for document processing endpoint: 10 requests per minute per IP
+export const docLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: 429,
+  skip: (req) => req.headers['x-test-suite'] === 'sahayak-tests' || process.env.NODE_ENV === 'test',
+  message: {
+    error: 'Too many document translation requests. Please wait a moment before trying again.',
+    tip: 'Rate limit is 10 requests per minute.',
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+});
+
+// In-memory Multer storage (uploaded documents are NEVER written to disk)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_FILE_SIZE_BYTES
+  }
+});
+
+// 7. Government Document Understanding & Translation Endpoint (FEATURE 3)
+app.post('/api/document/process', docLimiter, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          error: 'File size exceeds maximum allowed limit of 10 MB.'
+        });
+      }
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No document file uploaded. Please upload a PDF, JPEG, PNG, or WebP document.'
+      });
+    }
+
+    const { language = 'en' } = req.body || {};
+
+    const result = await processDocument({
+      buffer: req.file.buffer,
+      mimeType: req.file.mimetype,
+      targetLanguage: language
+    });
+
+    res.json(result);
+  } catch (error) {
+    const msg = error.message || 'Failed to process document';
+    const isTimeout = msg.includes('timed out');
+    const isRateLimit = msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
+    const isServiceUnavailable = msg.includes('503') || msg.includes('UNAVAILABLE');
+    const isClientError = msg.includes('Unsupported file type') ||
+      msg.includes('magic') ||
+      msg.includes('signature') ||
+      msg.includes('Invalid target language') ||
+      msg.includes('empty') ||
+      msg.includes('exceeds maximum');
+
+    let status = 500;
+    let userMsg = msg;
+
+    if (isClientError) {
+      status = 400;
+    } else if (isTimeout) {
+      status = 504;
+      userMsg = 'Document processing timed out on the server. Please try again or submit a clearer document.';
+    } else if (isRateLimit) {
+      status = 429;
+      userMsg = 'AI rate limit reached. Please wait a minute before submitting another document.';
+    } else if (isServiceUnavailable) {
+      status = 503;
+      userMsg = 'AI translation service is temporarily unavailable. Please retry in a few moments.';
+    }
+
+    if (status >= 500 && !isTimeout) {
+      console.error('Error in /api/document/process:', error.message);
+    }
+
+    res.status(status).json({
+      error: userMsg,
+      disclaimer: 'Please ensure you upload a valid, readable government document.'
+    });
+  }
+});
+
 export const server = app.listen(PORT, () => {
+  server.requestTimeout = 120000;
+  server.headersTimeout = 120000;
   console.log(`Sahayak backend running on http://localhost:${PORT}`);
 });

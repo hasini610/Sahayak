@@ -1,16 +1,10 @@
 import React from 'react';
 import { languages, UI_STRINGS } from '../translations/content';
-import { Volume2, VolumeX, Eye, Globe, Menu } from 'lucide-react';
+import { Globe, Menu } from 'lucide-react';
 
 export default function Navbar({
   language,
   setLanguage,
-  fontSize,
-  setFontSize,
-  highContrast,
-  setHighContrast,
-  isAudioMuted,
-  setIsAudioMuted,
   onReset,
   currentPage,
   setCurrentPage,
@@ -25,7 +19,7 @@ export default function Navbar({
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 transition-colors shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20 gap-2">
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
           {/* Left section: Mobile hamburger + Logo & Identity */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Mobile Sidebar Hamburger Toggle */}
@@ -106,16 +100,15 @@ export default function Navbar({
             </button>
           </nav>
 
-          {/* Right section: Controls (Language, Text Size, Accessibility, Audio) */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {/* Language Selector */}
+          {/* Right section: Language Selector */}
+          <div className="flex items-center">
             <div className="relative inline-flex items-center">
-              <Globe className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 pointer-events-none" />
+              <Globe className="w-4 h-4 text-slate-500 absolute left-3 pointer-events-none" />
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 aria-label="Select Assistant Language"
-                className="pl-7 pr-3 sm:pr-4 py-1.5 text-xs sm:text-sm font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-2xs cursor-pointer"
+                className="pl-9 pr-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-2xs cursor-pointer transition-colors"
               >
                 {languages.map((lang) => (
                   <option key={lang.id} value={lang.id}>
@@ -124,62 +117,6 @@ export default function Navbar({
                 ))}
               </select>
             </div>
-
-            {/* Accessibility: Font Size toggler */}
-            <div className="hidden md:flex items-center bg-slate-100 rounded-xl p-0.5 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setFontSize(Math.max(14, fontSize - 2))}
-                title="Decrease font size"
-                aria-label="Decrease text size"
-                className="px-2 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-lg hover:bg-white transition"
-              >
-                A-
-              </button>
-              <span className="text-xs px-1.5 text-slate-500 font-mono font-semibold">
-                {fontSize}px
-              </span>
-              <button
-                type="button"
-                onClick={() => setFontSize(Math.min(22, fontSize + 2))}
-                title="Increase font size"
-                aria-label="Increase text size"
-                className="px-2 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-lg hover:bg-white transition"
-              >
-                A+
-              </button>
-            </div>
-
-            {/* High Contrast Toggle */}
-            <button
-              type="button"
-              onClick={() => setHighContrast(!highContrast)}
-              title={t.highContrast}
-              aria-label="Toggle High Contrast Mode"
-              className={`p-2 rounded-xl border text-xs font-medium flex items-center gap-1 transition-all ${
-                highContrast
-                  ? 'bg-black text-yellow-300 border-black'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 shadow-2xs'
-              }`}
-            >
-              <Eye className="w-4 h-4" />
-              <span className="hidden xl:inline">{t.highContrast}</span>
-            </button>
-
-            {/* Audio Mute / Unmute */}
-            <button
-              type="button"
-              onClick={() => setIsAudioMuted(!isAudioMuted)}
-              title={isAudioMuted ? 'Unmute Audio' : 'Mute Audio'}
-              aria-label={isAudioMuted ? 'Unmute speech output' : 'Mute speech output'}
-              className={`p-2 rounded-xl border text-xs font-medium transition-all shadow-2xs ${
-                isAudioMuted
-                  ? 'bg-red-50 text-red-700 border-red-300'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
           </div>
         </div>
       </div>

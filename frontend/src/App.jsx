@@ -39,12 +39,6 @@ export default function App() {
         <Navbar
           language={language}
           setLanguage={setLanguage}
-          fontSize={fontSize}
-          setFontSize={setFontSize}
-          highContrast={highContrast}
-          setHighContrast={setHighContrast}
-          isAudioMuted={isAudioMuted}
-          setIsAudioMuted={setIsAudioMuted}
           onReset={handleReset}
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
